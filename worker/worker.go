@@ -46,7 +46,9 @@ func findJobs(c shared.Config) {
 	go func() {
 		var job shared.Job
 		for jobs.Next(&job) {
-			c.Emitter.Emit(job.Name, job)
+			if job.Name != "" {
+				c.Emitter.Emit(job.Name, job)
+			}
 			deleteJob(c, job)
 		}
 	}()
