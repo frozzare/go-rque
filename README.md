@@ -19,18 +19,17 @@ import (
 	"fmt"
 
 	"github.com/frozzare/go-emitter"
-	"github.com/frozzare/go-rque/worker"
-	"github.com/frozzare/go-rque/shared"
+	"github.com/frozzare/go-rque"
 )
 
 func main() {
 	e := emitter.New()
 
-	e.On("hello", func(job shared.Job) {
+	e.On("hello", func(job rque.Job) {
 		fmt.Println("hello")
 	})
 
-	worker.Run(shared.Config{
+	rque.Run(rque.Config{
 		Address:  "localhost:28015",
 		Database: "db",
 		Table:    "queue",
