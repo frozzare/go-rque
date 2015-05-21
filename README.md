@@ -39,6 +39,13 @@ func main() {
 }
 ```
 
+```json
+{
+    "name": "hello",
+    "data": {}
+}
+```
+
 # License
 
  MIT © [Fredrik Forsmo](https://github.com/frozzare)
