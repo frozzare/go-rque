@@ -4,8 +4,8 @@ import (
 	"log"
 
 	r "github.com/dancannon/gorethink"
-	"github.com/frozzare/go-queue/datastore"
-	"github.com/frozzare/go-queue/shared"
+	"github.com/frozzare/go-rque/datastore"
+	"github.com/frozzare/go-rque/shared"
 )
 
 // deleteJob will delete a job and

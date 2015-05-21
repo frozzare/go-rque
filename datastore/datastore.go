@@ -4,7 +4,7 @@ import (
 	"log"
 
 	r "github.com/dancannon/gorethink"
-	"github.com/frozzare/go-queue/shared"
+	"github.com/frozzare/go-rque/shared"
 )
 
 var session *r.Session
