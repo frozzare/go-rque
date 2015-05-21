@@ -39,6 +39,8 @@ func main() {
 }
 ```
 
+JSON row in the database:
+
 ```json
 {
     "name": "hello",
