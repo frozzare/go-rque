@@ -1,6 +1,6 @@
 # rque
 
-Simple queue build with RethinkDB. Requires [go-emitter](http://github.com/frozzare/go-emitter).
+Simple queue built with RethinkDB.
 
 View the [docs](http://godoc.org/github.com/frozzare/go-rque).
 
