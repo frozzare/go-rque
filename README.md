@@ -1,6 +1,6 @@
-# go-rque
+# rque
 
-Simple queue build with RethinkDB. Requires [go-emitter](http://github.com/frozzare/go-emitter).
+Simple queue built with RethinkDB.
 
 View the [docs](http://godoc.org/github.com/frozzare/go-rque).
 
@@ -13,28 +13,18 @@ $ go get github.com/frozzare/go-rque
 ## Example
 
 ```go
-package main
+que, err := rque.New(rque.Config{
+	Address:  "localhost:28015",
+	Database: "test",
+	Table:    "queue",
+})
 
-import (
-	"fmt"
+if err != nil {
+	log.Fatalf("Failed to create que: %s", err)
+}
 
-	"github.com/frozzare/go-emitter"
-	"github.com/frozzare/go-rque"
-)
-
-func main() {
-	e := emitter.New()
-
-	e.On("hello", func(job rque.Job) {
-		fmt.Println("hello")
-	})
-
-	rque.Run(rque.Config{
-		Address:  "localhost:28015",
-		Database: "db",
-		Table:    "queue",
-		Emitter:  e,
-	})
+for job := range que.Jobs() {
+	fmt.Printf("Hello %s\n", job.Name)
 }
 ```
 

@@ -1,18 +1,12 @@
 package rque
 
-import (
-	"log"
-
-	r "github.com/dancannon/gorethink"
-	"github.com/frozzare/go-emitter"
-)
+import r "github.com/dancannon/gorethink"
 
 // Config represent the
 // configurations of the queue
 type Config struct {
 	Address  string
 	Database string
-	Emitter  *emitter.Emitter
 	Table    string
 }
 
@@ -24,80 +18,103 @@ type Job struct {
 	Data interface{} `gorethink:"data,omitempty" json:"data"`
 }
 
-var session *r.Session
+// Que watches a job table
+type Que struct {
+	config  Config
+	session *r.Session
+	jobs    chan Job
+	quit    chan bool
+}
 
-// sessionInstance will return RethinkDB session
-func sessionInstance(c Config) *r.Session {
-	if session == nil {
-		sen, err := r.Connect(r.ConnectOpts{
-			Address:  c.Address,
-			Database: c.Database,
-		})
+// New creates a new Que
+func New(config Config) (*Que, error) {
+	session, err := r.Connect(r.ConnectOpts{
+		Address:  config.Address,
+		Database: config.Database,
+	})
 
-		if err != nil {
-			log.Fatalf("Error connecting to DB: %s", err)
-		}
-
-		session = sen
-
-		return session
+	if err != nil {
+		return nil, err
 	}
 
-	return session
+	que := Que{
+		config:  config,
+		session: session,
+		jobs:    make(chan Job),
+		quit:    make(chan bool),
+	}
+
+	// Run job fetching functions
+	go que.findJobs()
+	go que.runLeftovers()
+
+	// Wait for quit
+	go func() {
+		<-que.quit
+		que.session.Close()
+	}()
+
+	return &que, nil
+}
+
+// Jobs returns the jobs channel
+func (q *Que) Jobs() <-chan Job {
+	return q.jobs
+}
+
+// Quit stops the que watcher
+func (q *Que) Quit() {
+	q.quit <- true
+	close(q.jobs)
+}
+
+// PostJob add a job to the queue
+func (q *Que) PostJob(job Job) error {
+	_, err := r.Table(q.config.Table).Insert(job).RunWrite(q.session)
+	return err
 }
 
 // deleteJob will delete a job and
-func deleteJob(c Config, job Job) {
-	_, err := r.Table(c.Table).Get(job.ID).Delete().Run(sessionInstance(c))
-
-	if err != nil {
-		panic(err)
-	}
+func (q *Que) deleteJob(job Job) error {
+	_, err := r.Table(q.config.Table).Get(job.ID).Delete().RunWrite(q.session)
+	return err
 }
 
 // runLeftovers will run all existing job in the database
 // before the changes feed.
-func runLeftovers(c Config) {
-	res, err := r.Table(c.Table).Run(sessionInstance(c))
+func (q *Que) runLeftovers() error {
+	res, err := r.Table(q.config.Table).Run(q.session)
+	defer res.Close()
 
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var jobs []Job
 	res.All(&jobs)
 
 	for _, job := range jobs {
-		c.Emitter.Emit(job.Name, job)
-		deleteJob(c, job)
+		q.jobs <- job
+		q.deleteJob(job)
 	}
+	return nil
 }
 
 // findJobs will find all new jobs from the changes feed.
-func findJobs(c Config) {
-	jobs, err := r.Table(c.Table).Changes().Field("new_val").Run(sessionInstance(c))
+func (q *Que) findJobs() error {
+	jobs, err := r.Table(q.config.Table).Changes().Field("new_val").Run(q.session)
+	defer jobs.Close()
 
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	go func() {
-		var job Job
-		for jobs.Next(&job) {
-			if job.Name != "" {
-				c.Emitter.Emit(job.Name, job)
-			}
-			deleteJob(c, job)
+	var job Job
+	for jobs.Next(&job) {
+		if job.Name != "" {
+			q.jobs <- job
 		}
-	}()
-}
-
-// Run the worker.
-func Run(c Config) {
-	quit := make(chan bool, 1)
-
-	go runLeftovers(c)
-	go findJobs(c)
-
-	<-quit
+		q.deleteJob(job)
+	}
+	return nil
 }
