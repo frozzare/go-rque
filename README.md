@@ -32,7 +32,7 @@ JSON row in the database:
 
 ```json
 {
-    "name": "hello",
+    "name": "Fredrik",
     "data": {}
 }
 ```
